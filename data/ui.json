@@ -1,0 +1,9 @@
+{
+    "button":{
+        "AtOnce":"seat.RunAll()",
+        "OnlyOne":"seat.RunOne()",
+        "Reset":"seat.do()",
+        "SavePNG":"System.SavePNG()",
+        "SavePDF":"System.SavePDF()"
+    }
+}
