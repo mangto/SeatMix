@@ -9,30 +9,47 @@ pygame.init()
 
 global group_list
 
-window = pygame.display.set_mode((1440,800))
+window = pygame.display.set_mode((1030,865))
 save = (1030,int(1030*210/297))
 pygame.display.set_caption("자리 바꾸기")
 pygame.display.set_icon(pygame.image.load('.\\data\\icon.jpg'))
 ui_list = []
 
-group_seat_count = [5,6,6,5,5,4]
+group_seat_count = [5,5,5,6,5,5]
 seat_surf = pygame.Surface((len(group_seat_count)+2,max(group_seat_count)+2))
 for x in range(len(group_seat_count)):
     for y in range(group_seat_count[x]):
         seat_surf.set_at((len(group_seat_count)-x,max(group_seat_count)-y),(255,255,255))
 seats = [[[] for n in range(x_count)] for x_count in group_seat_count]
+# print(seats)
 Position = []
 students = eval(open('.\\data\\students','r',encoding='utf-8').read())
 Decided = eval(open('.\\data\\group.json','r',encoding='utf-8').read())
-random.shuffle(Decided)
+define = eval(open('.\\data\\define.json','r',encoding='utf-8').read())
+seperate = eval(open('.\\data\\seperate.json','r',encoding='utf-8').read())
+thing = pygame.mixer.Sound(".\\data\\thing.mp3")
+# print(len(students))
 Distributed = {}
 for i, team in enumerate(Decided):
     for name in team:
         Distributed[name] = i
+
+# print(Distributed)
+# print(Decided)
 global group_
 group_ = {}
 
+class color:
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+    red = (255, 9, 9)
 
+class textures:
+    dusts = [
+        pygame.transform.scale(pygame.image.load(f".\\textures\\dust0{n+1}.png"), (64, 64)) for n in range(7)
+    ]
+
+entities = 0
 
 def font(fontname, size):
     return pygame.font.Font(f"C:\\Windows\\Fonts\\{fontname}.TTF",size)
@@ -48,6 +65,10 @@ lastleft2 = 0
 lastright2 = 0
 lastright1 = 0
 lastmiddle1 = 0
+
+def distance(pos1:tuple, pos2:tuple) -> tuple:
+    return ((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2 )**0.5
+
 class mouse:
     def middlebtdown():
         global lastmiddle1
@@ -102,10 +123,13 @@ class seat:
         global Position
         Position = []
         for i in range(len(Decided)):
-            x = random.randint(1,len(group_seat_count))
-            y = random.randint(1,group_seat_count[x-1])
+            if str(i) not in define:
+                x = random.randint(1,len(group_seat_count))
+                y = random.randint(1,group_seat_count[x-1])
 
-            Position.append((x-1,y-1))
+                Position.append((x-1,y-1))
+            else:
+                Position.append(eval(random.choice(define[str(i)])))
     
     def do():
         seat.PlantSeed()
@@ -134,6 +158,7 @@ class seat:
             else:
                 x = random.randint(-1,1)
                 y = random.randint(-1,1)
+
                 new_seat = (pos[0]+x,pos[1]+y)
                 n = 0
 
@@ -141,10 +166,9 @@ class seat:
                     n += 1
                     x = random.randint(-1,1)
                     y = random.randint(-1,1)
-                    new_seat = (pos[0]+x,pos[1]+y)\
+                    new_seat = (pos[0]+x,pos[1]+y)
 
                 if (n >= 30):
-                    seat.do()
                     break
 
 
@@ -153,12 +177,15 @@ class seat:
 
         for student in seat.student:
             if (student not in combined):
+
                 new_seat = random.sample(seat_num,1)[0]
                 seat_num.remove(new_seat)
                 result[student] = new_seat
 
         group_ = result
         seat.dum = seat.student
+        if (len(result) < len(seat.student)):
+            seat.do()
 
     def RunOne():
         if (len(seat.dum) > 0):
@@ -166,17 +193,31 @@ class seat:
             seat.dum.remove(student)
 
             pos = group_[student]
-            group_list[pos[0]].seats[pos[1]].set_text(student)
+            obj = group_list[pos[0]].seats[pos[1]]
+            obj.set_text(student)
+            
+            ParticleHub((int(obj.x + obj.sx/2), int(obj.y + obj.sy/2)))
+            # pygame.mixer.Sound.play(thing)
 
     def RunAll():
+        seat.do()
         global group_
         
-        n = 0
+        loc = {}
         for student in group_:
-            n +=1
-            pos = group_[student]
-            group_list[pos[0]].seats[pos[1]].set_text(student)
 
+            pos = group_[student]
+            loc[student] = pos
+            obj = group_list[pos[0]].seats[pos[1]]
+            obj.set_text(student)
+            ParticleHub((int(obj.x + obj.sx/2), int(obj.y + obj.sy/2)))
+        
+        # check valid
+        valid = True
+        for group in seperate:
+            if distance(loc.get(group[0]), loc.get(group[1])) <= group[2]: valid = False
+        if not valid: seat.RunAll()
+        
 class System:
     clock = pygame.time.Clock()
     bugged_icon = pygame.image.load(f'.\\data\\icon\\bug.png')
@@ -451,58 +492,17 @@ class System:
                 pass
             def draw(self,mx,my):
                 pass
-        class numberinput:
-            def __init__(self,surface:pygame.Surface, x,y,sx,sy,backgroundcolor,font,basetext="input box",textcolor=(255,255,255),glow=(255,255,255),warn=(255,30,30),text=""):
-                ui_list.append(self)
-                self.x=x
-                self.y = y
-                self.sx=sx
-                self.sy = sy
-                self.bgc = backgroundcolor
-                self.font = font
-                self.basetext = basetext
-                self.text = text
-                self.textcolor = textcolor
-                self.glow = glow
-                self.enabled = False
-                self.canwrite = True
-                self.warn = warn
-
-                self.hitbox = pygame.Surface(surface.get_size())
-                pygame.draw.rect(self.hitbox,(255,255,255),(x,y,sx,sy))
-            def draw(self, mx,my):
-                pressed = keyboard[0]
-
-                if (self.hitbox.get_at((mx,my)) == (255,255,255) and mouse.leftbtup() == True):
-                    self.enabled = True
-                elif(self.hitbox.get_at((mx,my)) != (255,255,255) and mouse.leftbtup() == True):
-                    self.enabled = False
-
-                pygame.draw.rect(window,self.bgc,[self.x,self.y,self.sx,self.sy])
-                textsize = System.draw.gettsize(self.text,self.font)
-                if (self.text != ""): System.draw.text(self.text,self.font,window,self.x+int(self.sx/2),self.y+int(self.sy/2),"center",self.textcolor)
-                else: System.draw.text(self.basetext,self.font,window,self.x+int(self.sx/2),self.y+int(self.sy/2),"center",self.textcolor)
-                if (self.enabled == True): pygame.draw.rect(window,self.glow,[self.x,self.y,self.sx,self.sy],1)
-                if (textsize[0] > self.sx-(self.sy-textsize[1])):
-                    self.canwrite = False
-                    pygame.draw.rect(window,self.warn,[self.x,self.y,self.sx,self.sy],1)
-                else: self.canwrite = True
-
-                for key in pressed:
-                    if (key == "backspace"):
-                        self.text = self.text[0:-1]
-                    elif (str(key).isnumeric() == True and textsize[0] < self.sx-(self.sy-textsize[1])):
-                        self.text += key
 
     def display():
         window.fill((235, 241, 249))
 
         for ui in ui_list: 
             ui.draw(mx,my)
-        
+        for particle in ParticleHub.entities:
+            particle.draw()
 
-        System.draw.rrect(window,[1055,25,360,200],(235, 241, 249),0.1)
-        window.blit(pygame.transform.scale(seat_surf,(seat_surf.get_size()[0]*3,seat_surf.get_size()[1]*3)),(1070,40))
+        # System.draw.rrect(window,[1055,25,360,200],(235, 241, 249),0.1)
+        # window.blit(pygame.transform.scale(seat_surf,(seat_surf.get_size()[0]*3,seat_surf.get_size()[1]*3)),(1070,40))
 
     def event(events):
         for event in events:
@@ -510,18 +510,65 @@ class System:
                 pygame.quit()
                 sys.exit()
 
+class ParticleHub:
+    entities = []
 
+    class SubParticle:
+        def __init__(self, pos:tuple[int, int], speed:tuple[int, int]) -> None:
+            self.pos = list(pos)
+            self.speed = list(speed)
+            self.scale = random.randint(0, 6)
+            self.texture :pygame.Surface = textures.dusts[self.scale]
+            # self.texture.set_alpha(100)
+
+            return
+
+
+        def draw(self):
+            if ((fps := System.clock.get_fps()) > 0):
+                self.speed[1] += 9.8/fps*50
+
+                self.pos[0] += self.speed[0]/fps
+                self.pos[1] += self.speed[1]/fps
+
+
+            window.blit(self.texture, (self.pos[0]-32, self.pos[1]-32))
+
+    def __init__(self, pos:tuple[int, int]) -> None:
+        global entities
+        self.pos = pos
+        self.duration = 2.5
+        self.summon = time.time()
+        self.sub = []
+        self.count = random.randint(2, 5)
+
+        ParticleHub.entities.append(self)
+        for i in range(self.count): self.sub.append(ParticleHub.SubParticle(self.pos, (random.randrange(-150, 150), random.randrange(-200, 30))))
+        entities += self.count
+        pass
+
+    def draw(self):
+        global entities
+        for particle in self.sub:
+            particle.draw()
+
+        if (time.time() - self.summon >= self.duration):
+            ParticleHub.entities.pop(ParticleHub.entities.index(self))
+            entities -= self.count
+        
+        # pygame.draw.circle(window, color.red, self.pos, 3, 1)
 
 #test_button = System.ui.button(window,100,100,25,25,round=True,edge_thick=1,opacity=255,icon=System.icon('plus'))
+
 group_list = []
 for i in range(6):group_list.append(System.ui.group(window,f"{i+1} 분단",i+1,group_seat_count[i])) # 분단
-chalkboard = System.ui.button(window,245,730,525,20,color=(56,190,128),edge_thick=0,round=True,roundness=1,text="칠판",text_color=(255,255,255),edge_color=(56,190,128), addshadow=False,clickable=False)
-setting_panel = System.ui.button(window,1030,-50,450,800,color=(255,255,255),edge_thick=0,round=True,roundness=0.1,clickable=False,CustomCorrectionX=-75,CustomCorrectionY=-150)
-AtOnce = System.ui.button(window,1055,235,140,30,color=(56,190,128),edge_thick=0,text="한 번에 뽑기",text_color=(255,255,255),round=True,roundness=0.5,showline=False,tag="AtOnce")
-OnlyOne = System.ui.button(window,1205,235,140,30,color=(56,190,128),edge_thick=0,text="하나 뽑기",text_color=(255,255,255),round=True,roundness=0.5,showline=False,tag="OnlyOne")
-Reset = System.ui.button(window,1355,235,60,30,color=(253, 76, 54),edge_thick=0,text="초기화",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="Reset")
-PNGSave = System.ui.button(window,1055,275,175,30,color=(255,185,34),edge_thick=0,text="PNG로 저장",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="SavePNG")
-PDFSave = System.ui.button(window,1240,275,175,30,color=(255,185,34),edge_thick=0,text="PDF로 저장",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="SavePDF")
+chalkboard = System.ui.button(window,365,730,300,20,color=(56,190,128),edge_thick=0,round=True,roundness=1,text="칠판",text_color=(255,255,255),edge_color=(56,190,128), addshadow=False,clickable=False)
+setting_panel = System.ui.button(window,320,770,390,200,color=(255,255,255),edge_thick=0,round=True,roundness=0.1,clickable=False,CustomCorrectionX=-70, CustomCorrectionY=-35)
+AtOnce = System.ui.button(window,1055-720,785,140,30,color=(56,190,128),edge_thick=0,text="한 번에 뽑기",text_color=(255,255,255),round=True,roundness=0.5,showline=False,tag="AtOnce")
+OnlyOne = System.ui.button(window,1205-720,785,140,30,color=(56,190,128),edge_thick=0,text="하나 뽑기",text_color=(255,255,255),round=True,roundness=0.5,showline=False,tag="OnlyOne")
+Reset = System.ui.button(window,1355-720,785,60,30,color=(253, 76, 54),edge_thick=0,text="초기화",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="Reset")
+PNGSave = System.ui.button(window,1055-720,825,175,30,color=(255,185,34),edge_thick=0,text="PNG로 저장",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="SavePNG")
+PDFSave = System.ui.button(window,1240-720,825,175,30,color=(255,185,34),edge_thick=0,text="PDF로 저장",text_color=(255,255,255),round=True,roundness=0.4,showline=False,tag="SavePDF")
 
 
 seat.do()
@@ -536,4 +583,4 @@ while True:
         
     pygame.display.update()
 
-    System.clock.tick(30)
+    System.clock.tick(144)

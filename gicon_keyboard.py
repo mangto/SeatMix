@@ -1,6 +1,4 @@
-import ctypes
-from win32api import GetKeyState
-import win32api, time,os
+import win32api, time
 
 VK_CODE = {8: 'backspace',
  9: 'tab',
